@@ -181,11 +181,9 @@ void main()
 		struct timeval timeout;
 		timeout.tv_sec = 120;
 		timeout.tv_usec = 0;
-		cout << "TCP Server: Waiting for new action" << endl;
 
 		int nfd;
 		nfd = select(0, &waitRecv, &waitSend, NULL, &timeout);
-		cout << "TCP Server: Got new assignment" << endl;
 
 		if (nfd == SOCKET_ERROR)
 		{
@@ -458,7 +456,7 @@ int putRequest(int index, SocketState* sockets) {
 	fstream oFile;
 
 	buffer = (string)sockets[index].buffer;
-	address = FILE_PATH + (string)strtok(sockets[index].buffer, " ");
+	address = FILE_PATH + queryString;
 	oFile.open(address);
 
 	if (!oFile.good())
