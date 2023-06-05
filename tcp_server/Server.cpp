@@ -29,7 +29,7 @@ struct SocketState
 	int len;
 };
 
-const char* FILE_PATH = "C:\\temp\\html_files\\";
+const char* FILE_PATH = "C:\\Temp\\html_files\\";
 const int TCP_PORT = 27015;
 const int MAX_SOCKETS = 60;
 const int EMPTY = 0;
@@ -78,7 +78,7 @@ void main()
 	}
 
 	// Server side:
-	// Create and bind a socket to an internet address.àæ 
+	// Create and bind a socket to an internet address.Ã Ã¦ 
 	// Listen through the socket for incoming connections.
 
 	// After initialization, a SOCKET object is ready to be instantiated.
@@ -350,11 +350,11 @@ void sendMessage(int index, SocketState* sockets)
 	{
 	case (HTTPRequest::TRACE):
 		response = "HTTP/1.1 200 OK";
-		response += "\nDate: ";
+		response += "\r\nDate: ";
 		response += ctime(&timer);
-		response += "Content-Type: html";
-		response += "\nContent-length: ";
-		response += to_string(response.size() + strlen("\nRequest: TRACE\n") + buffer.size());
+		response += "\r\nContent-Type: html";
+		response += "\r\nContent-length: ";
+		response += to_string(response.size() + strlen("\r\nRequest: TRACE\r\n") + buffer.size());
 		response += "\r\nRequest: TRACE\r\n";
 		response += buffer;
 		response += "\r\n\r\n";
@@ -397,6 +397,8 @@ void sendMessage(int index, SocketState* sockets)
 		response += "\r\nRequest: GET\r\n\r\n";
 		break;
 	case (HTTPRequest::OPTIONS):
+		//response = "HTTP/1.1 204 No Content\r\nAllow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\nDATE: ";
+		//response += ctime(&timer);
 		response = "HTTP/1.1 204 No Content\r\n Allow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\n";
 		response += "Request: OPTIONS\r\n\r\n";
 		break;
@@ -486,6 +488,8 @@ HTTPRequest getRequestNumber(string recvBuff) {
 		return HTTPRequest::POST;
 	else if (recvBuff == "HEAD")
 		return HTTPRequest::HEAD;
+	else if (recvBuff == "PUT")
+		return HTTPRequest::PUT;
 	else if (recvBuff == "GET")
 		return HTTPRequest::GET;
 	else
