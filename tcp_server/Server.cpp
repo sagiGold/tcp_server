@@ -51,12 +51,10 @@ void receiveMessage(int index, SocketState* sockets);
 void removeSocket(int index, SocketState* sockets);
 void sendMessage(int index, SocketState* sockets);
 int putRequest(struct SocketState* socket);
-string getRequest(int index, SocketState* sockets, bool isGet);
+string getRequest(int index, SocketState* sockets);
 HTTPRequest getRequestNumber(string recvBuff);
 string handlePutRequest(int index, SocketState* sockets);
 string handlePostRequest(int index, SocketState* sockets);
-string handleGetRequest(int index, SocketState* sockets, bool isGet);
-
 
 void main()
 {
@@ -336,9 +334,9 @@ void receiveMessage(int index, SocketState* sockets)
 void sendMessage(int index, SocketState* sockets)
 {
 	int bytesSent = 0;
-	char sendBuff[BUFF_SIZE];
+	char sendBuff[4000];
 
-	string response, fileAddress = FILE_PATH;
+	string response, fileAddress = FILE_PATH, content;
 
 	SOCKET msgSocket = sockets[index].id;
 
@@ -385,16 +383,48 @@ void sendMessage(int index, SocketState* sockets)
 		response += "\r\nRequest: POST\r\n\r\n";
 		break;
 	case (HTTPRequest::HEAD):
-		response = handleGetRequest(index, sockets, false);
-		response += "Content-length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: HEAD\r\n"));
+		content = getRequest(index, sockets);
+
+		if (content == "") {
+			response = "HTTP/1.1 204 No Content";
+		}
+		else if (content == "400") {
+			response = "HTTP/1.1 400 Bad Request";
+		}
+		else if (content == "404") {
+			response = "HTTP/1.1 404 Not Found";
+		}
+		else {
+			response = "HTTP/1.1 200 OK";
+		}
+
+		response += "\r\nContent-length: ";
+		response += to_string(response.size() + strlen("\r\nRequest: HEAD\r\n\r\r\n"));
 		response += "\r\nRequest: HEAD\r\n\r\n";
 		break;
-	case (HTTPRequest::GET):
-		response = handleGetRequest(index, sockets, true);
-		response += "\nContent-length: ";
-		response += to_string(response.size() + strlen("\nRequest: GET\n"));
-		response += "\r\nRequest: GET\r\n\r\n";
+	case (HTTPRequest::GET):		
+		content = getRequest(index, sockets);
+
+		if (content == "") {
+			response = "HTTP/1.1 204 No Content";
+		}
+		else if (content == "400") {
+			response = "HTTP/1.1 400 Bad Request";
+		}
+		else if (content == "404") {
+			response = "HTTP/1.1 404 Not Found";
+		}
+		else {
+			response = "HTTP/1.1 200 OK";
+		}
+
+		response += "\r\nContent-length: ";
+		response += to_string(response.size() + strlen("\r\nRequest: GET\r\n") + content.size() + strlen("\r\n\r\n"));
+		response += "\r\nRequest: GET\r\n";
+		response += "\r\n\r\n";
+		response += content;
+		response += "\r\n\r\n";
+
 		break;
 	case (HTTPRequest::OPTIONS):
 		//response = "HTTP/1.1 204 No Content\r\nAllow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\nDATE: ";
@@ -496,7 +526,7 @@ HTTPRequest getRequestNumber(string recvBuff) {
 		return HTTPRequest::OPTIONS;
 }
 
-string getRequest(int index, SocketState* sockets, bool isGet) {
+string getRequest(int index, SocketState* sockets) {
 	string fileName = queryString.substr(0, queryString.find('.')),
 		fileSuffix = queryString.substr(6, queryString.find('?') - queryString.find('.') - 1),
 		param = queryString.substr(queryString.find('?') + 1, string::npos);
@@ -522,40 +552,15 @@ string getRequest(int index, SocketState* sockets, bool isGet) {
 	file.open(address);
 	string content = "", line;
 
-	if (file) {
-		if (isGet) {
-			while (getline(file, line))
-				content += line;
-		}
-		else {
-			content = "200";
-		}
+	if (file) {		
+		while (getline(file, line))
+			content += line;		
 	}
 	else {
 		content = "404";
 	}
 
-
 	file.close();
 
 	return content;
-}
-
-string handleGetRequest(int index, SocketState* sockets, bool isGet) {
-	string content = getRequest(index, sockets, isGet);
-
-	if (content == "") {
-		return "HTTP/1.1 204 No Content";
-	}
-	else if (content == "400") {
-		return "HTTP/1.1 400 Bad Request";
-	}
-	else if (content == "404") {
-		return "HTTP/1.1 404 Not Found";
-	}
-	else {
-		string response = "HTTP/1.1 200 OK\n";
-		response += content;
-		return response;
-	}
 }
