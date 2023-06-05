@@ -345,10 +345,8 @@ void sendMessage(int index, SocketState* sockets)
 	switch (sockets[index].sendSubType)
 	{
 	case (HTTPRequest::TRACE):
-		response = "HTTP/1.1 200 OK";
-		response += "\r\nDate: ";
-		response += ctime(&timer);
-		response += "\r\nContent-Type: html";
+		response = "HTTP/1.1 200 OK";	
+		response += "\r\nContent-Type: html";		
 		response += "\r\nContent-length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: TRACE\r\n") + buffer.size());
 		response += "\r\nRequest: TRACE\r\n";
@@ -418,11 +416,11 @@ void sendMessage(int index, SocketState* sockets)
 
 		response += "\r\nContent-length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: GET\r\n") + content.size() + strlen("\r\n\r\n"));
-		response += "\r\nRequest: GET\r\n";
+		//response += "\r\nRequest: GET";
 		response += "\r\n\r\n";
-		response += content;
-		response += "\r\n\r\n";
-
+		if (content != "" && content != "400" && content != "404") {
+			response += content;
+		}
 		break;
 	case (HTTPRequest::OPTIONS):
 		//response = "HTTP/1.1 204 No Content\r\nAllow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\nDATE: ";
