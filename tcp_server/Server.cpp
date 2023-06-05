@@ -46,10 +46,10 @@ int socketsCount = 0;
 string method, buffer, queryString;
 
 bool addSocket(SOCKET id, int what);
-void acceptConnection(int index);
-void receiveMessage(int index);
-void removeSocket(int index);
-void sendMessage(int index);
+void acceptConnection(int index, SocketState* sockets);
+void receiveMessage(int index, SocketState* sockets);
+void removeSocket(int index, SocketState* sockets);
+void sendMessage(int index, SocketState* sockets);
 int putRequest(struct SocketState* socket);
 string getRequest(int index, SocketState* sockets, bool isGet);
 HTTPRequest getRequestNumber(string recvBuff);
@@ -204,11 +204,11 @@ void main()
 				switch (sockets[i].recv)
 				{
 				case LISTEN:
-					acceptConnection(i);
+					acceptConnection(i, sockets);
 					break;
 
 				case RECEIVE:
-					receiveMessage(i);
+					receiveMessage(i, sockets);
 					break;
 				}
 			}
@@ -219,7 +219,7 @@ void main()
 			if (FD_ISSET(sockets[i].id, &waitSend))
 			{
 				nfd--;
-				sendMessage(i);
+				sendMessage(i, sockets);
 			}
 		}
 		//cout << "TCP Server: nfd = " << nfd << endl;
@@ -249,14 +249,14 @@ bool addSocket(SOCKET id, int what)
 	return (false);
 }
 
-void removeSocket(int index)
+void removeSocket(int index, SocketState* sockets)
 {
 	sockets[index].recv = EMPTY;
 	sockets[index].send = EMPTY;
 	socketsCount--;
 }
 
-void acceptConnection(int index)
+void acceptConnection(int index, SocketState* sockets)
 {
 	SOCKET id = sockets[index].id;
 	struct sockaddr_in from;		// Address of sending partner
@@ -285,7 +285,7 @@ void acceptConnection(int index)
 	return;
 }
 
-void receiveMessage(int index)
+void receiveMessage(int index, SocketState* sockets)
 {
 	SOCKET msgSocket = sockets[index].id;
 
@@ -296,13 +296,13 @@ void receiveMessage(int index)
 	{
 		cout << "TCP Server: Error at recv(): " << WSAGetLastError() << endl;
 		closesocket(msgSocket);
-		removeSocket(index);
+		removeSocket(index, sockets);
 		return;
 	}
 	if (bytesRecv == 0)
 	{
 		closesocket(msgSocket);
-		removeSocket(index);
+		removeSocket(index, sockets);
 		return;
 	}
 	else
@@ -333,12 +333,12 @@ void receiveMessage(int index)
 	}
 }
 
-// TODO pass socket as parameter and not global.
-void sendMessage(int index)
+void sendMessage(int index, SocketState* sockets)
 {
 	int bytesSent = 0;
-	char sendBuff[BUFF_SIZE], fileAddress[BUFF_SIZE];
-	string response;
+	char sendBuff[BUFF_SIZE];
+
+	string response, fileAddress = FILE_PATH;
 
 	SOCKET msgSocket = sockets[index].id;
 
@@ -355,22 +355,23 @@ void sendMessage(int index)
 		response += "\nContent-Type: html";
 		response += "\nContent-length: ";
 		response += to_string(response.size() + strlen("\nRequest: TRACE\n") + buffer.size());
-		response += "\nRequest: TRACE\n";
+		response += "\r\nRequest: TRACE\r\n";
 		response += buffer;
+		response += "\r\n\r\n";
 		break;
-	case (HTTPRequest::DELETER):
-		strcpy(fileAddress, FILE_PATH);
-		strcat(fileAddress, strtok(sockets[index].buffer, " ")); // Adds the file name
-		if (remove(fileAddress) == 0)
+	case (HTTPRequest::DELETER):		
+		fileAddress += queryString; // Adds the file name
+		if (remove(fileAddress.c_str()) == 0)
 			response = "HTTP/1.1 204 No Content"; // The server successfully processed the request, but is not returning any content 
 		else
 			response = "HTTP/1.1 404 Not Found"; // Failed to remove resource
 
-		response += "\nDate: ";
+		response += "\r\nDate: ";
 		response += ctime(&timer);
-		response += "\nContent-length: ";
-		response += to_string(response.size() + strlen("\nRequest: DELETE\n"));
-		response += "\nRequest: DELETE\n";
+		response += "\r\nContent-length: ";
+		response += to_string(response.size() + strlen("\r\nRequest: DELETE\r\n"));
+		response += "\r\nRequest: DELETE\r\n\r\n";
+		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::PUT):
 		response = handlePutRequest(index, sockets);
@@ -378,25 +379,25 @@ void sendMessage(int index)
 		response += ctime(&timer);
 		response += "\nContent-length: ";
 		response += to_string(response.size() + strlen("\nRequest: PUT\n"));
-		response += "\nRequest: PUT\n";
+		response += "\nRequest: PUT\r\n\r\n";
 		break;
 	case (HTTPRequest::POST):
 		cout << endl << "POST request has been recieved: \n" << queryString << endl;
 		response = "HTTP/1.1 200 OK";
-		response += "\r\nDate: ";
+		response += "\nDate: ";
 		response += ctime(&timer);
 		response += "Content-message: Post message was outputed on the server's console.";
-		response += "\r\nContent-length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: POST\r\n"));
-		response += "\r\nRequest: POST\r\n";
+		response += "\nContent-length: ";
+		response += to_string(response.size() + strlen("\r\nRequest: POST\r\n\r\n"));
+		response += "\nRequest: POST\r\n\r\n";
 		break;
 	case (HTTPRequest::HEAD):
 		response = handleGetRequest(index, sockets, false);
-		response += "\nDate: ";
+		response += "\r\nDate: ";
 		response += ctime(&timer);
-		response += "\nContent-length: ";
-		response += to_string(response.size() + strlen("\nRequest: HEAD\n"));
-		response += "Request: HEAD\n";
+		response += "Content-length: ";
+		response += to_string(response.size() + strlen("\r\nRequest: HEAD\r\n"));
+		response += "Request: HEAD\r\n\r\n";
 		break;
 	case (HTTPRequest::GET):
 		response = handleGetRequest(index, sockets, true);
@@ -404,15 +405,15 @@ void sendMessage(int index)
 		response += ctime(&timer);
 		response += "\nContent-length: ";
 		response += to_string(response.size() + strlen("\nRequest: GET\n"));
-		response += "Request: GET\n";
+		response += "Request: GET\r\n\r\n";
 		break;
 	case (HTTPRequest::OPTIONS):
-		response = "HTTP/1.1 204 No Content\n Allow: OPTIONS, GET, HEAD, POST, TRACE, PUT\n Date: ";
+		response = "HTTP/1.1 204 No Content\r\n Allow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\n DATE: ";
 		response += ctime(&timer);
-		response = "\nRequest: OPTIONS\n";
+		response += "Request: OPTIONS\r\n\r\n";
 		break;
 	default:
-		response = "Request is not allowed. Ask for OPTIONS.\n";
+		response = "Request is not allowed. Ask for OPTIONS.\r\n\r\n";
 		break;
 	}
 
@@ -425,7 +426,7 @@ void sendMessage(int index)
 		return;
 	}
 
-	cout << "TCP Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n";
+	cout << "TCP Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n\n";
 
 	sockets[index].send = IDLE;
 }
