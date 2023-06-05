@@ -78,7 +78,7 @@ void main()
 	}
 
 	// Server side:
-	// Create and bind a socket to an internet address.
+	// Create and bind a socket to an internet address.àæ 
 	// Listen through the socket for incoming connections.
 
 	// After initialization, a SOCKET object is ready to be instantiated.
@@ -366,49 +366,40 @@ void sendMessage(int index, SocketState* sockets)
 		else
 			response = "HTTP/1.1 404 Not Found"; // Failed to remove resource
 
-		response += "\r\nDate: ";
-		response += ctime(&timer);
 		response += "\r\nContent-length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: DELETE\r\n"));
+		response += to_string(response.size() + strlen("\r\nRequest: DELETE\r\n\r\n"));
 		response += "\r\nRequest: DELETE\r\n\r\n";
 		break;
 	case (HTTPRequest::PUT):
 		response = handlePutRequest(index, sockets);
-		response += "\nDate: ";
-		response += ctime(&timer);
-		response += "\nContent-length: ";
+		response += "\r\nContent-length: ";
 		response += to_string(response.size() + strlen("\nRequest: PUT\n"));
-		response += "\nRequest: PUT\r\n\r\n";
+		response += "\r\nRequest: PUT\r\n\r\n";
 		break;
 	case (HTTPRequest::POST):
 		cout << endl << "POST request has been recieved: \n" << queryString << endl;
 		response = "HTTP/1.1 200 OK";
-		response += "\nDate: ";
-		response += ctime(&timer);
-		response += "Content-message: Post message was outputed on the server's console.";
-		response += "\nContent-length: ";
+		response += "\r\nContent-message: Post message was outputed on the server's console.";
+		response += "\r\nContent-length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: POST\r\n\r\n"));
-		response += "\nRequest: POST\r\n\r\n";
+		response += "\r\nRequest: POST\r\n\r\n";
 		break;
 	case (HTTPRequest::HEAD):
 		response = handleGetRequest(index, sockets, false);
-		response += "\r\nDate: ";
-		response += ctime(&timer);
 		response += "Content-length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: HEAD\r\n"));
-		response += "Request: HEAD\r\n\r\n";
+		response += "\r\nRequest: HEAD\r\n\r\n";
 		break;
 	case (HTTPRequest::GET):
 		response = handleGetRequest(index, sockets, true);
-		response += "\nDate: ";
-		response += ctime(&timer);
 		response += "\nContent-length: ";
 		response += to_string(response.size() + strlen("\nRequest: GET\n"));
-		response += "Request: GET\r\n\r\n";
+		response += "\r\nRequest: GET\r\n\r\n";
 		break;
 	case (HTTPRequest::OPTIONS):
-		response = "HTTP/1.1 204 No Content\r\nAllow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\nDATE: ";
-		response += ctime(&timer);
+		//response = "HTTP/1.1 204 No Content\r\nAllow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\nDATE: ";
+		//response += ctime(&timer);
+		response = "HTTP/1.1 204 No Content\r\n Allow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\n";
 		response += "Request: OPTIONS\r\n\r\n";
 		break;
 	default:
@@ -425,7 +416,7 @@ void sendMessage(int index, SocketState* sockets)
 		return;
 	}
 
-	cout << "TCP Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n\n";
+	cout << "\nTCP Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n\n";
 
 	sockets[index].send = IDLE;
 }
@@ -506,8 +497,8 @@ HTTPRequest getRequestNumber(string recvBuff) {
 }
 
 string getRequest(int index, SocketState* sockets, bool isGet) {
-	string fileName = queryString.substr(1, queryString.find('.') - 1),
-		fileSuffix = queryString.substr(8, queryString.find('?') - queryString.find('.') - 1),
+	string fileName = queryString.substr(0, queryString.find('.')),
+		fileSuffix = queryString.substr(6, queryString.find('?') - queryString.find('.') - 1),
 		param = queryString.substr(queryString.find('?') + 1, string::npos);
 
 	if ((fileSuffix != "html" && fileSuffix != "txt") || (param != "lang=he" && param != "lang=fr" && param != "lang=en")) {
@@ -515,17 +506,20 @@ string getRequest(int index, SocketState* sockets, bool isGet) {
 		return "400";
 	}
 
-	string lang = "en";
+	string lang = "english";
 	if (param == "lang=he") {
-		lang = "he";
+		lang = "hebrew";
 	}
 	else if (param == "lang=fr") {
-		lang = "fr";
+		lang = "french";
 	}
 
 	// get content from file to string 
 	ifstream file;
-	file.open((FILE_PATH + lang + "." + fileSuffix + "\\"));
+	string address = FILE_PATH;
+	address += (lang + "\\" + fileName + "." + fileSuffix);
+
+	file.open(address);
 	string content = "", line;
 
 	if (file) {
