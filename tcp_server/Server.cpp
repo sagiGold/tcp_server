@@ -9,6 +9,18 @@
 #include <time.h>
 using namespace std;
 
+const char* FILE_PATH = "C:\\Temp\\files\\";
+const int TCP_PORT = 27015;
+const int MAX_SOCKETS = 60;
+const int EMPTY = 0;
+const int LISTEN = 1;
+const int RECEIVE = 2;
+const int IDLE = 3;
+const int SEND = 4;
+const int SEND_TIME = 1;
+const int SEND_SECONDS = 2;
+const int BUFF_SIZE = 2048;
+
 enum class HTTPRequest {
 	TRACE,
 	DELETER,
@@ -25,21 +37,9 @@ struct SocketState
 	int	recv;					// Receiving?
 	int	send;					// Sending?
 	HTTPRequest sendSubType;	// Sending sub-type
-	char buffer[128];
+	char buffer[BUFF_SIZE];
 	int len;
 };
-
-const char* FILE_PATH = "C:\\Temp\\files\\";
-const int TCP_PORT = 27015;
-const int MAX_SOCKETS = 60;
-const int EMPTY = 0;
-const int LISTEN = 1;
-const int RECEIVE = 2;
-const int IDLE = 3;
-const int SEND = 4;
-const int SEND_TIME = 1;
-const int SEND_SECONDS = 2;
-const int BUFF_SIZE = 255;
 
 struct SocketState sockets[MAX_SOCKETS] = { 0 };
 int socketsCount = 0;
@@ -50,11 +50,11 @@ void acceptConnection(int index, SocketState* sockets);
 void receiveMessage(int index, SocketState* sockets);
 void removeSocket(int index, SocketState* sockets);
 void sendMessage(int index, SocketState* sockets);
-int putRequest(struct SocketState* socket);
+void updateSendType(int index, SocketState* sockets);
+
 string getRequest(int index, SocketState* sockets);
 HTTPRequest getRequestNumber(string recvBuff);
 string handlePutRequest(int index, SocketState* sockets);
-string handlePostRequest(int index, SocketState* sockets);
 
 void main()
 {
@@ -308,29 +308,43 @@ void receiveMessage(int index, SocketState* sockets)
 
 		if (sockets[index].len > 0)
 		{
-			// Get buffer from socket and get from it the method and queryString
-			buffer = sockets[index].buffer;
-			//cout << "Buffer: " << buffer << endl;
-			method = buffer.substr(0, buffer.find(' '));
-			buffer = buffer.substr(buffer.find(' ') + 2, string::npos);
-			queryString = buffer.substr(0, buffer.find(' '));
-
-			//update request in buffer
-			sockets[index].send = SEND;
-			sockets[index].recv = EMPTY;
-			sockets[index].sendSubType = getRequestNumber(method);
-
-			//cout << "method: " << method << endl;
-			//cout << "buffer: " << buffer << endl;
-			//cout << "queryString: " << queryString << endl;
+			updateSendType(index, sockets);
 		}
 	}
+}
+
+void updateSendType(int index, SocketState* sockets)
+{
+	int bytesToSub;
+
+	// Get buffer from socket and get from it the method and queryString
+	buffer = sockets[index].buffer;
+	cout << "buffer: " << buffer << endl;
+
+	method = buffer.substr(0, buffer.find(' '));
+	buffer = buffer.substr(buffer.find(' ') + 2, string::npos);
+	queryString = buffer.substr(0, buffer.find(' '));
+
+	// Update request in buffer
+	sockets[index].send = SEND;
+	//sockets[index].recv = EMPTY;
+	sockets[index].sendSubType = getRequestNumber(method);
+
+	// Delete method from the buffer
+	bytesToSub = method.length() + 2; // skip " \"
+	sockets[index].len -= bytesToSub;
+	memcpy(sockets[index].buffer, &sockets[index].buffer[bytesToSub], sockets[index].len);
+	sockets[index].buffer[sockets[index].len] = '\0';
+
+	cout << "method: " << method << endl;
+	cout << "buffer: " << buffer << endl;
+	cout << "queryString: " << queryString << endl;
 }
 
 void sendMessage(int index, SocketState* sockets)
 {
 	int bytesSent = 0;
-	char sendBuff[4000];
+	char sendBuff[BUFF_SIZE];
 
 	string response, fileAddress = FILE_PATH, content;
 	SOCKET msgSocket = sockets[index].id;
@@ -342,7 +356,7 @@ void sendMessage(int index, SocketState* sockets)
 	switch (sockets[index].sendSubType)
 	{
 	case (HTTPRequest::TRACE):
-		response = "HTTP/1.1 200 OK";	
+		response = "HTTP/1.1 200 OK";
 		response += "\r\nContent-Type: Message/HTTP";		
 		response += "\r\nContent-Length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: TRACE\r\n") + buffer.size());
@@ -437,13 +451,18 @@ void sendMessage(int index, SocketState* sockets)
 	}
 
 	strcpy(sendBuff, response.c_str());
-
 	bytesSent = send(msgSocket, sendBuff, (int)strlen(sendBuff), 0);
+
 	if (SOCKET_ERROR == bytesSent)
 	{
 		cout << "TCP Server: Error at send(): " << WSAGetLastError() << endl;
 		return;
 	}
+
+	//clean buffer: memset put NULL in every spot of the buffer 
+	memset(sockets[index].buffer, 0, BUFF_SIZE);
+	//reset buffer size to 0
+	sockets[index].len = 0;
 
 	cout << "\nTCP Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n\n";
 
