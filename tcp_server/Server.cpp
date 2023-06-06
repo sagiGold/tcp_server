@@ -29,7 +29,7 @@ struct SocketState
 	int len;
 };
 
-const char* FILE_PATH = "C:\\Temp\\html_files\\";
+const char* FILE_PATH = "C:\\Temp\\files\\";
 const int TCP_PORT = 27015;
 const int MAX_SOCKETS = 60;
 const int EMPTY = 0;
@@ -59,7 +59,6 @@ string handlePostRequest(int index, SocketState* sockets);
 void main()
 {
 	// Initialize Winsock (Windows Sockets).
-
 	// Create a WSADATA object called wsaData.
 	// The WSADATA structure contains information about the Windows 
 	// Sockets implementation.
@@ -218,7 +217,6 @@ void main()
 				sendMessage(i, sockets);
 			}
 		}
-		//cout << "TCP Server: nfd = " << nfd << endl;
 	}
 
 	// Closing connections and Winsock.
@@ -303,7 +301,7 @@ void receiveMessage(int index, SocketState* sockets)
 	}
 	else
 	{
-		sockets[index].buffer[len + bytesRecv] = '\0'; //add the null-terminating to make it a string
+		sockets[index].buffer[len + bytesRecv] = '\0'; // Make it a string
 		cout << "TCP Server: Recieved: " << bytesRecv << " bytes of \"" << &sockets[index].buffer[len] << "\" message.\n";
 
 		sockets[index].len += bytesRecv;
@@ -312,8 +310,7 @@ void receiveMessage(int index, SocketState* sockets)
 		{
 			// Get buffer from socket and get from it the method and queryString
 			buffer = sockets[index].buffer;
-			cout << "Buffer: " << buffer << endl;
-
+			//cout << "Buffer: " << buffer << endl;
 			method = buffer.substr(0, buffer.find(' '));
 			buffer = buffer.substr(buffer.find(' ') + 2, string::npos);
 			queryString = buffer.substr(0, buffer.find(' '));
@@ -322,9 +319,10 @@ void receiveMessage(int index, SocketState* sockets)
 			sockets[index].send = SEND;
 			sockets[index].recv = EMPTY;
 			sockets[index].sendSubType = getRequestNumber(method);
-			cout << "Buffer after substring: " << buffer << endl;
-			cout << "Method: " << method << endl;
-			cout << "queryString: " << queryString << endl;
+
+			//cout << "method: " << method << endl;
+			//cout << "buffer: " << buffer << endl;
+			//cout << "queryString: " << queryString << endl;
 		}
 	}
 }
@@ -335,23 +333,21 @@ void sendMessage(int index, SocketState* sockets)
 	char sendBuff[4000];
 
 	string response, fileAddress = FILE_PATH, content;
-
 	SOCKET msgSocket = sockets[index].id;
 
 	// Get the current time
-	time_t timer;
-	time(&timer);
+	//time_t timer;
+	//time(&timer);
 
 	switch (sockets[index].sendSubType)
 	{
 	case (HTTPRequest::TRACE):
 		response = "HTTP/1.1 200 OK";	
-		response += "\r\nContent-Type: html";		
-		response += "\r\nContent-length: ";
+		response += "\r\nContent-Type: HTML";		
+		response += "\r\nContent-Length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: TRACE\r\n") + buffer.size());
-		response += "\r\nRequest: TRACE\r\n";
+		response += "\r\nRequest: TRACE\r\n\r\n";
 		response += buffer;
-		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::DELETER):		
 		fileAddress += queryString; // Adds the file name
@@ -360,23 +356,26 @@ void sendMessage(int index, SocketState* sockets)
 		else
 			response = "HTTP/1.1 404 Not Found"; // Failed to remove resource
 
-		response += "\r\nContent-length: ";
+		response += "\r\nContent-Length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: DELETE\r\n\r\n"));
-		response += "\r\nRequest: DELETE\r\n\r\n";
+		response += "\r\nRequest: DELETE";
+		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::PUT):
 		response = handlePutRequest(index, sockets);
-		response += "\r\nContent-length: ";
+		response += "\r\nContent-Length: ";
 		response += to_string(response.size() + strlen("\nRequest: PUT\n"));
-		response += "\r\nRequest: PUT\r\n\r\n";
+		response += "\r\nRequest: PUT";
+		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::POST):
 		cout << endl << "POST request has been recieved: \n" << queryString << endl;
 		response = "HTTP/1.1 200 OK";
-		response += "\r\nContent-message: Post message was outputed on the server's console.";
-		response += "\r\nContent-length: ";
+		response += "\r\nContent-Message: Post message was outputed on the server's console.";
+		response += "\r\nContent-Length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: POST\r\n\r\n"));
-		response += "\r\nRequest: POST\r\n\r\n";
+		response += "\r\nRequest: POST";
+		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::HEAD):
 		content = getRequest(index, sockets);
@@ -394,9 +393,10 @@ void sendMessage(int index, SocketState* sockets)
 			response = "HTTP/1.1 200 OK";
 		}
 
-		response += "\r\nContent-length: ";
+		response += "\r\nContent-Length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: HEAD\r\n\r\r\n"));
-		response += "\r\nRequest: HEAD\r\n\r\n";
+		response += "\r\nRequest: HEAD";
+		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::GET):		
 		content = getRequest(index, sockets);
@@ -414,22 +414,25 @@ void sendMessage(int index, SocketState* sockets)
 			response = "HTTP/1.1 200 OK";
 		}
 
-		response += "\r\nContent-length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: GET\r\n") + content.size() + strlen("\r\n\r\n"));
-		//response += "\r\nRequest: GET";
+		response += "\r\nContent-Length: ";
+		response += to_string(response.size() + strlen("\r\nRequest: GET") + content.size() + strlen("\r\n\r\n"));
+		response += "\r\nRequest: GET";
 		response += "\r\n\r\n";
 		if (content != "" && content != "400" && content != "404") {
 			response += content;
 		}
 		break;
 	case (HTTPRequest::OPTIONS):
-		//response = "HTTP/1.1 204 No Content\r\nAllow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\nDATE: ";
 		//response += ctime(&timer);
-		response = "HTTP/1.1 204 No Content\r\n Allow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\n";
-		response += "Request: OPTIONS\r\n\r\n";
+		response = "HTTP/1.1 204 No Content\r\n";
+		response += "Allow: OPTIONS, GET, HEAD, POST, TRACE, PUT\r\n";
+		response += "Request: OPTIONS";
+		response += "\r\n\r\n";
 		break;
 	default:
-		response = "Request is not allowed. Ask for OPTIONS.\r\n\r\n";
+		response = "HTTP/1.1 405 Method Not Allowed\r\n";
+		response += "Allow: OPTIONS, GET, HEAD, POST, TRACE, PUT";
+		response += "\r\n\r\n";
 		break;
 	}
 
@@ -508,15 +511,15 @@ string handlePutRequest(int index, SocketState* sockets) {
 HTTPRequest getRequestNumber(string recvBuff) {
 	if (recvBuff == "TRACE")
 		return HTTPRequest::TRACE;
-	else if (recvBuff == "DELETE")
+	if (recvBuff == "DELETE")
 		return HTTPRequest::DELETER;
-	else if (recvBuff == "POST")
+	if (recvBuff == "POST")
 		return HTTPRequest::POST;
-	else if (recvBuff == "HEAD")
+	if (recvBuff == "HEAD")
 		return HTTPRequest::HEAD;
-	else if (recvBuff == "PUT")
+	if (recvBuff == "PUT")
 		return HTTPRequest::PUT;
-	else if (recvBuff == "GET")
+	if (recvBuff == "GET")
 		return HTTPRequest::GET;
 	else
 		return HTTPRequest::OPTIONS;
