@@ -331,10 +331,10 @@ void updateSendType(int index, SocketState* sockets)
 	sockets[index].sendSubType = getRequestNumber(method);
 
 	// Delete method from the buffer
-	bytesToSub = method.length() + 2; // skip " \"
-	sockets[index].len -= bytesToSub;
-	memcpy(sockets[index].buffer, &sockets[index].buffer[bytesToSub], sockets[index].len);
-	sockets[index].buffer[sockets[index].len] = '\0';
+	//bytesToSub = method.length() + 2; // skip " \"
+	//sockets[index].len -= bytesToSub;
+	//memcpy(sockets[index].buffer, &sockets[index].buffer[bytesToSub], sockets[index].len);
+	//sockets[index].buffer[sockets[index].len] = '\0';
 
 	cout << "method: " << method << endl;
 	cout << "buffer: " << buffer << endl;
@@ -357,11 +357,12 @@ void sendMessage(int index, SocketState* sockets)
 	{
 	case (HTTPRequest::TRACE):
 		response = "HTTP/1.1 200 OK";
+		response += "\r\nRequest: TRACE";
 		response += "\r\nContent-Type: Message/HTTP";		
 		response += "\r\nContent-Length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: TRACE\r\n") + buffer.size());
-		response += "\r\nRequest: TRACE\r\n\r\n";
-		response += buffer;
+		response += to_string(sockets[index].len);
+		response += "\r\n\r\n";
+		response += sockets[index].buffer;
 		break;
 	case (HTTPRequest::DELETER):		
 		fileAddress += queryString; // Adds the file name
@@ -370,25 +371,23 @@ void sendMessage(int index, SocketState* sockets)
 		else
 			response = "HTTP/1.1 404 Not Found"; // Failed to remove resource
 
-		response += "\r\nContent-Length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: DELETE\r\n\r\n"));
 		response += "\r\nRequest: DELETE";
+		response += "\r\nContent-Length: 0";
 		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::PUT):
 		response = handlePutRequest(index, sockets);
-		response += "\r\nContent-Length: ";
-		response += to_string(response.size() + strlen("\nRequest: PUT\n"));
 		response += "\r\nRequest: PUT";
+		response += "\r\nContent-Length: ";
+		response += "\r\nContent-Length: 0";
 		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::POST):
 		cout << endl << "POST request has been recieved: \n" << queryString << endl;
 		response = "HTTP/1.1 200 OK";
-		response += "\r\nContent-Message: Post message was outputed on the server's console.";
-		response += "\r\nContent-Length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: POST\r\n\r\n"));
 		response += "\r\nRequest: POST";
+		response += "\r\nContent-Message: Post message was outputed on the server's console.";
+		response += "\r\nContent-Length: 0";
 		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::HEAD):
@@ -407,9 +406,8 @@ void sendMessage(int index, SocketState* sockets)
 			response = "HTTP/1.1 200 OK";
 		}
 
-		response += "\r\nContent-Length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: HEAD\r\n\r\r\n"));
 		response += "\r\nRequest: HEAD";
+		response += "\r\nContent-Length: 0";
 		response += "\r\n\r\n";
 		break;
 	case (HTTPRequest::GET):		
@@ -428,13 +426,18 @@ void sendMessage(int index, SocketState* sockets)
 			response = "HTTP/1.1 200 OK";
 		}
 
-		response += "\r\nContent-Length: ";
-		response += to_string(response.size() + strlen("\r\nRequest: GET") + content.size() + strlen("\r\n\r\n"));
 		response += "\r\nRequest: GET";
-		response += "\r\n\r\n";
 		if (content != "" && content != "400" && content != "404") {
+			response += "\r\nContent-Length: ";
+			response += to_string(content.length());
+			response += "\r\n\r\n";
 			response += content;
 		}
+		else {
+			response += "\r\nContent-Length: 0";
+			response += "\r\n\r\n";
+		}
+
 		break;
 	case (HTTPRequest::OPTIONS):
 		//response += ctime(&timer);
@@ -451,7 +454,10 @@ void sendMessage(int index, SocketState* sockets)
 	}
 
 	strcpy(sendBuff, response.c_str());
-	bytesSent = send(msgSocket, sendBuff, (int)strlen(sendBuff), 0);
+	cout << "--------" << endl;
+	cout << "response: " << endl << response;
+	cout << "--------" << endl;
+	bytesSent = send(msgSocket, response.c_str(), response.length(), 0);
 
 	if (SOCKET_ERROR == bytesSent)
 	{
