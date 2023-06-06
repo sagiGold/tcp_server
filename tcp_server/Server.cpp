@@ -319,8 +319,6 @@ void updateSendType(int index, SocketState* sockets)
 
 	// Get buffer from socket and get from it the method and queryString
 	buffer = sockets[index].buffer;
-	cout << "buffer: " << buffer << endl;
-
 	method = buffer.substr(0, buffer.find(' '));
 	buffer = buffer.substr(buffer.find(' ') + 2, string::npos);
 	queryString = buffer.substr(0, buffer.find(' '));
@@ -330,15 +328,9 @@ void updateSendType(int index, SocketState* sockets)
 	//sockets[index].recv = EMPTY;
 	sockets[index].sendSubType = getRequestNumber(method);
 
-	// Delete method from the buffer
-	//bytesToSub = method.length() + 2; // skip " \"
-	//sockets[index].len -= bytesToSub;
-	//memcpy(sockets[index].buffer, &sockets[index].buffer[bytesToSub], sockets[index].len);
-	//sockets[index].buffer[sockets[index].len] = '\0';
-
-	cout << "method: " << method << endl;
+	/*cout << "method: " << method << endl;
 	cout << "buffer: " << buffer << endl;
-	cout << "queryString: " << queryString << endl;
+	cout << "queryString: " << queryString << endl;*/
 }
 
 void sendMessage(int index, SocketState* sockets)
@@ -348,10 +340,6 @@ void sendMessage(int index, SocketState* sockets)
 
 	string response, fileAddress = FILE_PATH, content;
 	SOCKET msgSocket = sockets[index].id;
-
-	// Get the current time
-	//time_t timer;
-	//time(&timer);
 
 	switch (sockets[index].sendSubType)
 	{
@@ -453,9 +441,6 @@ void sendMessage(int index, SocketState* sockets)
 	}
 
 	strcpy(sendBuff, response.c_str());
-	cout << "--------" << endl;
-	cout << "response: " << endl << response;
-	cout << "--------" << endl;
 	bytesSent = send(msgSocket, response.c_str(), response.length(), 0);
 
 	if (SOCKET_ERROR == bytesSent)
@@ -464,9 +449,8 @@ void sendMessage(int index, SocketState* sockets)
 		return;
 	}
 
-	//clean buffer: memset put NULL in every spot of the buffer 
+	// Clean buffer
 	memset(sockets[index].buffer, 0, BUFF_SIZE);
-	//reset buffer size to 0
 	sockets[index].len = 0;
 
 	cout << "\nTCP Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n\n";
