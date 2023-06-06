@@ -343,7 +343,7 @@ void sendMessage(int index, SocketState* sockets)
 	{
 	case (HTTPRequest::TRACE):
 		response = "HTTP/1.1 200 OK";	
-		response += "\r\nContent-Type: HTML";		
+		response += "\r\nContent-Type: Message/HTTP";		
 		response += "\r\nContent-Length: ";
 		response += to_string(response.size() + strlen("\r\nRequest: TRACE\r\n") + buffer.size());
 		response += "\r\nRequest: TRACE\r\n\r\n";
